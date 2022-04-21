@@ -27,7 +27,7 @@ D3D12ExecuteIndirect::D3D12ExecuteIndirect(UINT width, UINT height, std::wstring
     m_rtvDescriptorSize(0),
     m_cbvSrvUavDescriptorSize(0),
     m_csRootConstants(),
-    m_enableCulling(true),
+    m_enableCulling(false),
     m_fenceValues{}
 {
     m_constantBufferData.resize(TriangleCount);
@@ -295,6 +295,9 @@ void D3D12ExecuteIndirect::LoadAssets()
     // We will flush the GPU at the end of this method to ensure the resources are not
     // prematurely destroyed.
     ComPtr<ID3D12Resource> vertexBufferUpload;
+    ComPtr<ID3D12Resource> vertexBufferUpload1;
+    ComPtr<ID3D12Resource> indexBufferUpload;
+    ComPtr<ID3D12Resource> indexBufferUpload1;
     ComPtr<ID3D12Resource> commandBufferUpload;
 
     // Create the vertex buffer.
@@ -341,6 +344,141 @@ void D3D12ExecuteIndirect::LoadAssets()
         m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
         m_vertexBufferView.StrideInBytes = sizeof(Vertex);
         m_vertexBufferView.SizeInBytes = sizeof(triangleVertices);
+    }
+
+    // Create the index buffer.
+    {
+        // Define the geometry for a triangle.
+        uint16_t indices[] =
+        {
+            0, 1, 2
+        };
+
+        const UINT indexBufferSize = sizeof(indices);
+
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            nullptr,
+            IID_PPV_ARGS(&m_indexBuffer)));
+
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&indexBufferUpload)));
+
+        NAME_D3D12_OBJECT(m_indexBuffer);
+
+        // Copy data to the intermediate upload heap and then schedule a copy
+        // from the upload heap to the index buffer.
+        D3D12_SUBRESOURCE_DATA sourceData = {};
+        sourceData.pData = reinterpret_cast<UINT8*>(indices);
+        sourceData.RowPitch = indexBufferSize;
+        sourceData.SlicePitch = sourceData.RowPitch;
+
+        UpdateSubresources<1>(m_commandList.Get(), m_indexBuffer.Get(), indexBufferUpload.Get(), 0, 0, 1, &sourceData);
+        m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_indexBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+
+        // Initialize the index buffer view.
+        m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
+        m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+        m_indexBufferView.SizeInBytes = sizeof(indices);
+    }
+
+    // Create the vertex buffer 1.
+    {
+        // Define the geometry for a rectangle.
+        Vertex triangleVertices[] =
+        {
+            { { TriangleHalfWidth, TriangleHalfWidth, TriangleDepth } },
+            { { TriangleHalfWidth, -TriangleHalfWidth, TriangleDepth } },
+            { { -TriangleHalfWidth, TriangleHalfWidth, TriangleDepth } },
+            { { -TriangleHalfWidth, -TriangleHalfWidth, TriangleDepth } },
+        };
+
+        const UINT vertexBufferSize = sizeof(triangleVertices);
+
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            nullptr,
+            IID_PPV_ARGS(&m_vertexBuffer1)));
+
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize),
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&vertexBufferUpload1)));
+
+        NAME_D3D12_OBJECT(m_vertexBuffer1);
+
+        // Copy data to the intermediate upload heap and then schedule a copy
+        // from the upload heap to the vertex buffer.
+        D3D12_SUBRESOURCE_DATA vertexData = {};
+        vertexData.pData = reinterpret_cast<UINT8*>(triangleVertices);
+        vertexData.RowPitch = vertexBufferSize;
+        vertexData.SlicePitch = vertexData.RowPitch;
+
+        UpdateSubresources<1>(m_commandList.Get(), m_vertexBuffer1.Get(), vertexBufferUpload1.Get(), 0, 0, 1, &vertexData);
+        m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBuffer1.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
+
+        // Initialize the vertex buffer view.
+        m_vertexBufferView1.BufferLocation = m_vertexBuffer1->GetGPUVirtualAddress();
+        m_vertexBufferView1.StrideInBytes = sizeof(Vertex);
+        m_vertexBufferView1.SizeInBytes = sizeof(triangleVertices);
+    }
+
+    // Create the index buffer.
+    {
+        // Define the geometry for a triangle.
+        uint16_t indices[] =
+        {
+            0, 1, 2, 2, 1, 3
+        };
+
+        const UINT indexBufferSize = sizeof(indices);
+
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
+            D3D12_RESOURCE_STATE_COPY_DEST,
+            nullptr,
+            IID_PPV_ARGS(&m_indexBuffer1)));
+
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+            D3D12_HEAP_FLAG_NONE,
+            &CD3DX12_RESOURCE_DESC::Buffer(indexBufferSize),
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&indexBufferUpload1)));
+
+        NAME_D3D12_OBJECT(m_indexBuffer1);
+
+        // Copy data to the intermediate upload heap and then schedule a copy
+        // from the upload heap to the index buffer.
+        D3D12_SUBRESOURCE_DATA sourceData = {};
+        sourceData.pData = reinterpret_cast<UINT8*>(indices);
+        sourceData.RowPitch = indexBufferSize;
+        sourceData.SlicePitch = sourceData.RowPitch;
+
+        UpdateSubresources<1>(m_commandList.Get(), m_indexBuffer1.Get(), indexBufferUpload1.Get(), 0, 0, 1, &sourceData);
+        m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_indexBuffer1.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER));
+
+        // Initialize the index buffer view.
+        m_indexBufferView1.BufferLocation = m_indexBuffer1->GetGPUVirtualAddress();
+        m_indexBufferView1.Format = DXGI_FORMAT_R16_UINT;
+        m_indexBufferView1.SizeInBytes = sizeof(indices);
     }
 
     // Create the depth stencil view.
@@ -420,10 +558,13 @@ void D3D12ExecuteIndirect::LoadAssets()
     // Create the command signature used for indirect drawing.
     {
         // Each command consists of a CBV update and a DrawInstanced call.
-        D3D12_INDIRECT_ARGUMENT_DESC argumentDescs[2] = {};
+        D3D12_INDIRECT_ARGUMENT_DESC argumentDescs[4] = {};
         argumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW;
         argumentDescs[0].ConstantBufferView.RootParameterIndex = Cbv;
-        argumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
+        argumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
+        argumentDescs[1].VertexBuffer.Slot = 0;
+        argumentDescs[2].Type = D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW;
+        argumentDescs[3].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
 
         D3D12_COMMAND_SIGNATURE_DESC commandSignatureDesc = {};
         commandSignatureDesc.pArgumentDescs = argumentDescs;
@@ -467,9 +608,12 @@ void D3D12ExecuteIndirect::LoadAssets()
             for (UINT n = 0; n < TriangleCount; n++)
             {
                 commands[commandIndex].cbv = gpuAddress;
-                commands[commandIndex].drawArguments.VertexCountPerInstance = 3;
+                commands[commandIndex].vbv = (n % 2 == 0) ? m_vertexBufferView : m_vertexBufferView1;
+                commands[commandIndex].ibv = (n % 2 == 0) ? m_indexBufferView : m_indexBufferView1;
+                commands[commandIndex].drawArguments.IndexCountPerInstance = ( n % 2 == 0 ) ? 3 : 6;
                 commands[commandIndex].drawArguments.InstanceCount = 1;
-                commands[commandIndex].drawArguments.StartVertexLocation = 0;
+                commands[commandIndex].drawArguments.StartIndexLocation = 0;
+                commands[commandIndex].drawArguments.BaseVertexLocation = 0;
                 commands[commandIndex].drawArguments.StartInstanceLocation = 0;
 
                 commandIndex++;
@@ -781,8 +925,7 @@ void D3D12ExecuteIndirect::PopulateCommandLists()
         m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
         m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-        m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-        m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+        m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
         if (m_enableCulling)
         {

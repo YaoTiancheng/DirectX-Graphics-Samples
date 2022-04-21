@@ -76,7 +76,9 @@ private:
     struct IndirectCommand
     {
         D3D12_GPU_VIRTUAL_ADDRESS cbv;
-        D3D12_DRAW_ARGUMENTS drawArguments;
+        D3D12_VERTEX_BUFFER_VIEW vbv;
+        D3D12_INDEX_BUFFER_VIEW ibv;
+        D3D12_DRAW_INDEXED_ARGUMENTS drawArguments;
     };
 
     // Graphics root signature parameter offsets.
@@ -143,12 +145,18 @@ private:
     ComPtr<ID3D12GraphicsCommandList> m_commandList;
     ComPtr<ID3D12GraphicsCommandList> m_computeCommandList;
     ComPtr<ID3D12Resource> m_vertexBuffer;
+    ComPtr<ID3D12Resource> m_vertexBuffer1;
+    ComPtr<ID3D12Resource> m_indexBuffer;
+    ComPtr<ID3D12Resource> m_indexBuffer1;
     ComPtr<ID3D12Resource> m_constantBuffer;
     ComPtr<ID3D12Resource> m_depthStencil;
     ComPtr<ID3D12Resource> m_commandBuffer;
     ComPtr<ID3D12Resource> m_processedCommandBuffers[FrameCount];
     ComPtr<ID3D12Resource> m_processedCommandBufferCounterReset;
     D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+    D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView1;
+    D3D12_INDEX_BUFFER_VIEW m_indexBufferView;
+    D3D12_INDEX_BUFFER_VIEW m_indexBufferView1;
 
     void LoadPipeline();
     void LoadAssets();
