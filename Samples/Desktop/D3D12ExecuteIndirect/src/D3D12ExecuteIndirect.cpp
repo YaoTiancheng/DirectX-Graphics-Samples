@@ -349,7 +349,7 @@ void D3D12ExecuteIndirect::LoadAssets()
     // Create the index buffer.
     {
         // Define the geometry for a triangle.
-        uint16_t indices[] =
+        uint32_t indices[] =
         {
             0, 1, 2
         };
@@ -386,7 +386,7 @@ void D3D12ExecuteIndirect::LoadAssets()
 
         // Initialize the index buffer view.
         m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
-        m_indexBufferView.Format = DXGI_FORMAT_R16_UINT;
+        m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
         m_indexBufferView.SizeInBytes = sizeof(indices);
     }
 
