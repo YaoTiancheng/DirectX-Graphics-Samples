@@ -558,13 +558,11 @@ void D3D12ExecuteIndirect::LoadAssets()
     // Create the command signature used for indirect drawing.
     {
         // Each command consists of a CBV update and a DrawInstanced call.
-        D3D12_INDIRECT_ARGUMENT_DESC argumentDescs[4] = {};
-        argumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_CONSTANT_BUFFER_VIEW;
-        argumentDescs[0].ConstantBufferView.RootParameterIndex = Cbv;
-        argumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
-        argumentDescs[1].VertexBuffer.Slot = 0;
-        argumentDescs[2].Type = D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW;
-        argumentDescs[3].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
+        D3D12_INDIRECT_ARGUMENT_DESC argumentDescs[3] = {};
+        argumentDescs[0].Type = D3D12_INDIRECT_ARGUMENT_TYPE_VERTEX_BUFFER_VIEW;
+        argumentDescs[0].VertexBuffer.Slot = 0;
+        argumentDescs[1].Type = D3D12_INDIRECT_ARGUMENT_TYPE_INDEX_BUFFER_VIEW;
+        argumentDescs[2].Type = D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED;
 
         D3D12_COMMAND_SIGNATURE_DESC commandSignatureDesc = {};
         commandSignatureDesc.pArgumentDescs = argumentDescs;
@@ -607,7 +605,7 @@ void D3D12ExecuteIndirect::LoadAssets()
         {
             for (UINT n = 0; n < TriangleCount; n++)
             {
-                commands[commandIndex].cbv = gpuAddress;
+                //commands[commandIndex].cbv = gpuAddress;
                 commands[commandIndex].vbv = (n % 2 == 0) ? m_vertexBufferView : m_vertexBufferView1;
                 commands[commandIndex].ibv = (n % 2 == 0) ? m_indexBufferView : m_indexBufferView1;
                 commands[commandIndex].drawArguments.IndexCountPerInstance = ( n % 2 == 0 ) ? 3 : 6;
@@ -926,6 +924,8 @@ void D3D12ExecuteIndirect::PopulateCommandLists()
         m_commandList->ClearDepthStencilView(dsvHandle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
         m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+        m_commandList->SetGraphicsRootConstantBufferView(0, m_constantBuffer->GetGPUVirtualAddress());
 
         if (m_enableCulling)
         {
